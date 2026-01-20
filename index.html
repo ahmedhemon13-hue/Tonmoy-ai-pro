@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>TONMOY AI PRO</title>
+<style>
+body{margin:0;font-family:Arial;background:#050000;color:white}
+.app{max-width:430px;margin:auto;padding:10px}
+.header{background:#8b0000;padding:15px;text-align:center;font-size:24px;font-weight:bold;border-radius:10px}
+.panel{background:#120000;border:2px solid red;border-radius:12px;padding:12px;margin-top:10px}
+.big{color:#ff3b3b;font-size:42px;font-weight:bold;text-align:center}
+.small{color:#00ff6a;font-size:42px;font-weight:bold;text-align:center}
+button,input{width:100%;padding:10px;margin-top:8px;border-radius:8px;border:none;font-size:16px}
+button{background:#b00000;color:white;font-weight:bold}
+.stat{display:flex;justify-content:space-between}
+.box{width:48%;background:#1b0000;padding:10px;border-radius:8px;border:1px solid red;text-align:center}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{border:1px solid red;padding:4px;text-align:center}
+.footer{text-align:center;font-size:11px;color:#aaa;margin-top:5px}
+</style>
+</head>
+<body>
+
+<div class="app">
+<div class="header">🤖 TONMOY AI PRO</div>
+
+<div class="panel">
+<input id="period" placeholder="Enter Period Number">
+<button onclick="getSignal()">GET AI SIGNAL</button>
+<div id="signal" class="small">---</div>
+
+<input id="result" placeholder="Enter Result (0-9)">
+<button onclick="submitResult()">SUBMIT RESULT</button>
+</div>
+
+<div class="panel stat">
+<div class="box">WIN<br><span id="win">0</span></div>
+<div class="box">LOSS<br><span id="loss">0</span></div>
+</div>
+
+<div class="panel">
+<div>🎯 Accuracy: <span id="acc">0</span>%</div>
+</div>
+
+<div class="panel">
+<h3>History</h3>
+<table>
+<tr><th>Period</th><th>Signal</th><th>Result</th><th>Status</th></tr>
+<tbody id="history"></tbody>
+</table>
+</div>
+
+<div class="footer">TONMOY AI PRO - Analysis Tool</div>
+</div>
+
+<script>
+let data = JSON.parse(localStorage.getItem("tonmoyPro")) || [];
+let win=0, loss=0;
+let currentSignal="";
+
+async function entropy(){
+    try{
+        let r = await fetch("https://www.random.org/integers/?num=1&min=0&max=100&col=1&base=10&format=plain&rnd=new");
+        let t = await r.text();
+        return parseInt(t.trim());
+    }catch{
+        return Math.floor(Math.random()*100);
+    }
+}
+
+async function getSignal(){
+    let p = document.getElementById("period").value;
+    if(!p){ alert("Enter period"); return; }
+
+    let e = await entropy();
+    let trend = data.slice(0,6).filter(x=>x.status==="WIN").length;
+    let logic = (e + trend*11 + p.length) % 2;
+
+    let s = document.getElementById("signal");
+    if(logic){
+        s.innerText="BIG"; s.className="big"; currentSignal="BIG";
+    }else{
+        s.innerText="SMALL"; s.className="small"; currentSignal="SMALL";
+    }
+}
+
+function submitResult(){
+    let p = document.getElementById("period").value;
+    let r = parseInt(document.getElementById("result").value);
+
+    if(!p || isNaN(r) || r<0 || r>9){ alert("Invalid input"); return; }
+
+    let actual = r>=5?"BIG":"SMALL";
+    let status = actual===currentSignal?"WIN":"LOSS";
+
+    if(status==="WIN") win++; else loss++;
+
+    data.unshift({p, s:currentSignal, r, status});
+    localStorage.setItem("tonmoyPro", JSON.stringify(data));
+
+    render();
+}
+
+function render(){
+    let h = document.getElementById("history");
+    h.innerHTML="";
+    data.slice(0,50).forEach(d=>{
+        let tr=document.createElement("tr");
+        tr.innerHTML=`<td>${d.p}</td><td>${d.s}</td><td>${d.r}</td><td>${d.status}</td>`;
+        h.appendChild(tr);
+    });
+    document.getElementById("win").innerText=win;
+    document.getElementById("loss").innerText=loss;
+    let t=win+loss;
+    document.getElementById("acc").innerText = t?((win/t)*100).toFixed(2):0;
+}
+
+data.forEach(d=>{ if(d.status==="WIN") win++; else loss++; });
+render();
+</script>
+
+</body>
+</html>
